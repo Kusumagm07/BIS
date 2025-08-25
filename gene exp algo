@@ -1,0 +1,95 @@
+import numpy as np
+import random
+
+# Define the objective function (for optimization)
+def objective_function(x):
+    """ Example objective function: Minimize the sum of squares (easy to optimize) """
+    return np.sum(x ** 2)
+
+# Initialize Parameters
+population_size = 50
+num_genes = 10  # Number of genes in each individual
+mutation_rate = 0.1
+crossover_rate = 0.8
+max_generations = 100
+
+# Initialize Population (random genetic sequences)
+def initialize_population(population_size, num_genes):
+    return [np.random.uniform(-5, 5, num_genes) for _ in range(population_size)]
+
+# Fitness Evaluation
+def evaluate_fitness(population):
+    return np.array([objective_function(individual) for individual in population])
+
+# Selection (Roulette Wheel Selection)
+def selection(population, fitness):
+    probabilities = 1 / (1 + fitness)  # Higher fitness means more probability to be selected
+    probabilities /= np.sum(probabilities)  # Normalize probabilities
+    selected_indices = np.random.choice(range(population_size), size=population_size//2, p=probabilities)
+    return [population[i] for i in selected_indices]
+
+# Crossover (Single-Point Crossover)
+def crossover(parent1, parent2, crossover_rate):
+    if np.random.rand() < crossover_rate:
+        crossover_point = np.random.randint(1, num_genes)
+        child1 = np.concatenate([parent1[:crossover_point], parent2[crossover_point:]])
+        child2 = np.concatenate([parent2[:crossover_point], parent1[crossover_point:]])
+        return child1, child2
+    else:
+        return parent1.copy(), parent2.copy()
+
+# Mutation (Random mutation with mutation_rate)
+def mutation(child, mutation_rate):
+    for i in range(len(child)):
+        if np.random.rand() < mutation_rate:
+            child[i] += np.random.uniform(-1, 1)  # Add random mutation to gene
+    return child
+
+# Gene Expression (Translate genetic sequence into a solution)
+def gene_expression(individual):
+    return individual  # In this case, the individual itself is the solution
+
+# Main Evolution Loop
+population = initialize_population(population_size, num_genes)
+best_solution = None
+best_fitness = float('inf')
+
+for generation in range(max_generations):
+    # Step 1: Evaluate Fitness
+    fitness = evaluate_fitness(population)
+    
+    # Step 2: Track Best Solution
+    min_fitness_idx = np.argmin(fitness)
+    if fitness[min_fitness_idx] < best_fitness:
+        best_fitness = fitness[min_fitness_idx]
+        best_solution = population[min_fitness_idx]
+    
+    # Print Generation Info
+    print(f"Generation {generation+1}, Best Fitness: {best_fitness:.6f}")
+    
+    # Step 3: Selection
+    selected_population = selection(population, fitness)
+    
+    # Step 4: Crossover and Mutation
+    new_population = []
+    while len(new_population) < population_size:
+        # Select two parents
+        parent1, parent2 = random.sample(selected_population, 2)
+        
+        # Perform crossover
+        child1, child2 = crossover(parent1, parent2, crossover_rate)
+        
+        # Perform mutation
+        child1 = mutation(child1, mutation_rate)
+        child2 = mutation(child2, mutation_rate)
+        
+        # Add children to the new population
+        new_population.extend([child1, child2])
+    
+    # Step 5: Replace the old population with the new one
+    population = new_population[:population_size]  # Ensure population size remains constant
+
+# Output the Best Solution after final generation
+print("\nBest Solution Found:")
+print("Solution:", best_solution)
+print("Fitness:", best_fitness)
