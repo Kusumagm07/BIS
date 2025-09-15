@@ -1,0 +1,95 @@
+FUNCTION euclidean_distance(city1, city2)
+    RETURN sqrt((city1[0] - city2[0])^2 + (city1[1] - city2[1])^2)
+
+FUNCTION fitness(tour, cities)
+    total_distance = 0
+    FOR i = 1 to len(tour) - 1
+        total_distance += euclidean_distance(cities[tour[i]], cities[tour[i + 1]])
+    END FOR
+    total_distance += euclidean_distance(cities[tour[-1]], cities[tour[0]])  // Return to start
+    RETURN total_distance
+
+FUNCTION levy_flight(dim, beta = 1.5)
+    u = random_normal(0, 1, dim)  // Generate random normal values
+    v = random_normal(0, 1, dim)
+    step = u / (abs(v) ^ (1 / beta))
+    RETURN step
+
+FUNCTION initialize_population(n, dim)
+    population = []
+    FOR i = 1 to n
+        tour = random_permutation(dim)  // Generate a random tour
+        population.append(tour)
+    END FOR
+    RETURN population
+
+FUNCTION cuckoo_search(cities, n, Pa, Maxt)
+    dim = len(cities)  // Number of cities
+    nests = initialize_population(n, dim)  // Initialize nests (tours)
+    fitness_values = []
+    FOR each nest in nests
+        fitness_values.append(fitness(nest, cities))  // Evaluate fitness of each nest
+    END FOR
+
+    best_solution_idx = argmin(fitness_values)  // Find the best solution
+    best_solution = nests[best_solution_idx]
+    best_fitness = fitness_values[best_solution_idx]
+   
+    t = 0
+    WHILE t < Maxt
+        t += 1
+
+        // Generate new cuckoo solutions using Levy flight
+        new_nests = copy(nests)
+        FOR each nest in nests
+            step = levy_flight(dim)  // Generate a new step using Levy flight
+            swap_idx = random_choice(dim, size = 2, replace = false)
+            new_nests[nest][swap_idx] = new_nests[nest][swap_idx[::-1]]  // Swap cities in the tour
+        END FOR
+
+        // Evaluate fitness of new solutions
+        new_fitness_values = []
+        FOR each new_nest in new_nests
+            new_fitness_values.append(fitness(new_nest, cities))  // Calculate fitness
+        END FOR
+
+        // If cuckoo's egg is better, replace host egg
+        FOR i = 1 to n
+            IF new_fitness_values[i] < fitness_values[i]
+                nests[i] = new_nests[i]  // Replace with new better solution
+                fitness_values[i] = new_fitness_values[i]
+            END IF
+        END FOR
+
+        // Abandon worst nests with probability Pa
+        FOR i = 1 to n
+            IF random() < Pa
+                worst_idx = argmax(fitness_values)  // Find the worst nest
+                nests[worst_idx] = random_permutation(dim)  // Generate a new random tour
+                fitness_values[worst_idx] = fitness(nests[worst_idx], cities)
+            END IF
+        END FOR
+
+        // Track the best solution
+        best_solution_idx = argmin(fitness_values)  // Update best solution
+        best_solution = nests[best_solution_idx]
+        best_fitness = fitness_values[best_solution_idx]
+
+        PRINT "Iteration", t, "Best Distance:", best_fitness
+    END WHILE
+
+    RETURN best_solution, best_fitness  // Return the best solution and its fitness
+
+// Example usage for TSP
+cities = [[0, 0], [1, 2], [2, 4], [3, 1], [4, 3], [5, 0], [6, 2], [7, 4]]
+n = 20  // Number of host nests
+Pa = 0.25  // Probability of discovering cuckoo's egg
+Maxt = 500  // Maximum number of iterations
+
+best_solution, best_fitness = cuckoo_search(cities, n, Pa, Maxt)
+PRINT "Best Solution (Tour):", best_solution
+PRINT "Best Distance (Total Tour Length):", best_fitness
+
+// Plot the best solution
+PLOT best_solution
+
